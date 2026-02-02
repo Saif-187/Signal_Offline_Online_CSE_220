@@ -120,7 +120,7 @@ def target_function(x, function_type="square"):
         x1-=np.pi
         return x1
     elif function_type == "triangle":
-        return (2/np.pi) * np.arcsin(np.sin(x))
+        return np.arcsin(np.sin(x))
     elif function_type == "cubic":
         x_mod = ((x + 1) % 2) - 1
         return x_mod*x_mod*x_mod
