@@ -66,7 +66,7 @@ class CFT2D:
         """
         real, imag = self.compute_cft()
         magnitude = np.sqrt(real**2 + imag**2)
-        plt.imshow(np.log(magnitude + 1e-10), cmap='inferno')
+        plt.imshow(np.log1p(magnitude + 1e-10), cmap='magma')
         plt.title("2D CFT Magnitude Spectrum")
         plt.axis('off')
         plt.show()
@@ -108,14 +108,16 @@ class InverseCFT2D:
         """
         rows, cols = self.real.shape
         output = np.zeros((rows, cols))
+        ui=np.linspace(-1, 1, rows)
+        vj=np.linspace(-1, 1, cols)
         for i in range(rows):
             for j in range(cols):
-                integ_cos = np.cos(2*np.pi*(i*self.x[np.newaxis, :] + j*self.y[:, np.newaxis]))
-                integ_sin = np.sin(2*np.pi*(i*self.x[np.newaxis, :] + j*self.y[:, np.newaxis]))
+                integ_cos = np.cos(2*np.pi*(ui[:,np.newaxis]*self.x[j] + vj[np.newaxis,:]*self.y[i]))
+                integ_sin = np.sin(2*np.pi*(ui[:,np.newaxis]*self.x[j] + vj[np.newaxis,:]*self.y[i]))
 
-                temp_cos = np.trapezoid(integ_cos * self.real, self.x, axis=1)
-                temp_sin = np.trapezoid(integ_sin * self.imag, self.x, axis=1)
-                output[i,j] = np.trapezoid(temp_cos - temp_sin, self.y)
+                temp_cos = np.trapezoid(integ_cos * self.real, vj, axis=1)
+                temp_sin = np.trapezoid(integ_sin * self.imag, vj, axis=1)
+                output[i,j] = np.trapezoid(temp_cos - temp_sin, ui)
         return output
 
 # =====================================================
