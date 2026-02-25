@@ -3,7 +3,7 @@ from tkinter import filedialog, messagebox
 import numpy as np
 import scipy.io.wavfile as wav
 import sounddevice as sd
-from discrete_framework import DFTAnalyzer
+from discrete_framework import DFTAnalyzer, FFTAnalyzer
 
 class AudioEqualizer:
     def __init__(self, root):
@@ -87,9 +87,40 @@ class AudioEqualizer:
         
         # For starter code, we just play the original audio so the button "works"
         # In the final version, this should play self.processed_audio
-
-        output_audio = self.original_audio 
-        self.processed_audio = output_audio 
+        if self.use_fft.get():
+            analyzer = FFTAnalyzer()
+            chunk_size = 1024
+            while chunk_size < 1024:  
+                chunk_size <<= 1
+        else:
+            analyzer = DFTAnalyzer()
+            chunk_size = 256
+        audio = self.original_audio
+        total_samples = len(audio)
+        processed_chunks = []
+        for start in range(0, total_samples, chunk_size):
+            end = min(start + chunk_size, total_samples)
+            chunk = audio[start:end]
+            if len(chunk) < chunk_size:
+                chunk = np.pad(chunk, (0, chunk_size - len(chunk)), mode='constant')
+            window = np.hanning(len(chunk))
+            chunk_windowed = chunk * window
+            chunk_complex = chunk_windowed.astype(np.complex128)
+            signal = type('Signal', (), {'data': chunk_complex}) 
+            spectrum = analyzer.compute_dft(signal)
+            filtered_spectrum = self.apply_equalizer(spectrum, gains, self.samplerate, chunk_size)
+            time_domain = analyzer.compute_idft(filtered_spectrum)
+            time_domain_real = np.real(time_domain)
+            time_domain_real = time_domain_real * window
+            processed_chunks.append(time_domain_real[:end-start])
+        output_audio = np.concatenate(processed_chunks)[:total_samples]
+        max_val = np.max(np.abs(output_audio))
+        if max_val > 1.0:
+            output_audio = output_audio / max_val
+        
+        self.processed_audio = output_audio
+        
+        print("Processing complete. Playing audio...")
     
         sd.stop()
         default_output = sd.default.device[0]

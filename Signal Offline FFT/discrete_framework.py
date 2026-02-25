@@ -84,4 +84,31 @@ class DFTAnalyzer:
             x[n]=sum/N
         return x
         #return np.zeros(len(spectrum), dtype=np.complex128)
-
+class FFTAnalyzer(DFTAnalyzer):
+    def compute_dft(self, signal: DiscreteSignal):
+        return self.fft(signal.data)
+    def compute_idft(self, spectrum):
+        return self.ifft(spectrum)
+    def compute_fft(self, x):
+        N = len(x)
+        if N <= 1:
+            return x
+        if N & (N - 1) != 0:
+            next_pow2 = 1
+            while next_pow2 < N:
+                next_pow2 <<= 1
+            x = np.pad(x, (0, next_pow2 - N), mode='constant')
+            N = next_pow2
+        return self.recursive_fft(x)
+    def recursive_fft(self, x):
+        N = len(x)
+        if N <= 1:
+            return x
+        even = self.recursive_fft(x[0::2])
+        odd = self.recursive_fft(x[1::2])
+        T = np.exp(-2j * np.pi * np.arange(N) / N)
+        return np.concatenate([even + T[:N // 2] * odd, even + T[N // 2:] * odd])
+    def ifft(self, X):
+        N = len(X)
+        x_conj = self.fft(np.conj(X))
+        return np.conj(x_conj) / N

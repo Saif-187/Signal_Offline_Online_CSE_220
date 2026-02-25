@@ -1,7 +1,7 @@
 import tkinter as tk
 import numpy as np
 import math
-from discrete_framework import DiscreteSignal, DFTAnalyzer
+from discrete_framework import DiscreteSignal, DFTAnalyzer, FFTAnalyzer
 
 class DoodlingApp:
     def __init__(self, root):
@@ -77,8 +77,34 @@ class DoodlingApp:
         # 1. Convert (x,y) points to Complex Signal
         # 2. Select Algorithm 
         # 3. Compute Transform
-        
-        print("Transform logic needed.")
+        x, y = [], []
+        for point in self.points:
+            x.append(point[0])
+            y.append(point[1])
+        x=np.array(x)
+        y=np.array(y)
+        comp= x + 1j * y
+        signal= DiscreteSignal(comp)
+        if self.use_fft.get():
+            N = len(signal)
+            next_pow2 = 1
+            while next_pow2 < N:
+                next_pow2 <<= 1
+            
+            if next_pow2 != N:
+                signal = signal.interpolate(next_pow2)
+        if self.use_fft.get():
+            analyzer = FFTAnalyzer()
+        else:
+            analyzer = DFTAnalyzer()
+        self.fourier_coeffs = analyzer.compute_dft(signal)
+        mean_x = np.mean(x)
+        mean_y = np.mean(y)
+        self.center_offset = (mean_x, mean_y)
+        self.num_frames = len(signal)
+        self.time_step = 0
+        self.animate_epicycles(self.center_offset)
+        # print("Transform logic needed.")
         # self.animate_epicycles(mean_point)
 
     def animate_epicycles(self, center_offset):
@@ -93,19 +119,45 @@ class DoodlingApp:
         if not self.is_animating: return
         
         self.canvas.delete("epicycle") 
-        
+        self.canvas.delete("tip")
         # TODO: Implementation
         # 1. Calculate the current time 't' based on self.time_step
         # 2. Reconstruct the signal value 'z' at time 't' 
         # 3. Draw the epicycles:
         # 4. Draw the tips
-        
-        self.time_step = (self.time_step + 1)
+        N = len(self.fourier_coeffs)
+        if N == 0:
+            return
+        t=self.time_step / self.num_frames
 
-        # Loop animation
+        x,y=self.center_offset
+        magnitude=np.abs(self.fourier_coeffs)
+        indices = np.argsort(-np.array(magnitude)) 
+
+        for k_idx, k in enumerate(indices):
+            coeff = self.fourier_coeffs[k]
+            magnitude = np.abs(coeff)
+            phase = np.angle(coeff)
+            rotation = np.exp(1j * 2 * np.pi * k * t)
+            vector = coeff * rotation / N 
+            
+            if k_idx < 20: 
+                self.draw_epicycle(x, y, magnitude/N)
+            
+            x += np.real(vector)
+            y += np.imag(vector)
         
+        r = 4
+        self.canvas.create_oval(x-r, y-r, x+r, y+r, fill="red", outline="red", tags="tip")
+        if hasattr(self, 'prev_x') and hasattr(self, 'prev_y'):
+            self.canvas.create_line(self.prev_x, self.prev_y, x, y, fill="green", width=2, tags="epicycle")
+        
+        self.prev_x, self.prev_y = x, y
+        self.time_step = (self.time_step + 1) % self.num_frames
+        # Loop animation
         self.after_id = self.root.after(50, self.update_frame)
 
+        
 if __name__ == "__main__":
     root = tk.Tk()
     app = DoodlingApp(root)
