@@ -98,9 +98,7 @@ class DoodlingApp:
         else:
             analyzer = DFTAnalyzer()
         self.fourier_coeffs = analyzer.compute_dft(signal)
-        mean_x = np.mean(x)
-        mean_y = np.mean(y)
-        self.center_offset = (mean_x, mean_y)
+        self.center_offset = (0,0)
         self.num_frames = len(signal)
         self.time_step = 0
         self.animate_epicycles(self.center_offset)
@@ -130,7 +128,7 @@ class DoodlingApp:
             return
         t=self.time_step / self.num_frames
 
-        x,y=self.center_offset
+        x,y=(0,0)
         magnitude=np.abs(self.fourier_coeffs)
         indices = np.argsort(-np.array(magnitude)) 
 

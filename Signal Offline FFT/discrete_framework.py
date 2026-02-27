@@ -86,7 +86,7 @@ class DFTAnalyzer:
         #return np.zeros(len(spectrum), dtype=np.complex128)
 class FFTAnalyzer(DFTAnalyzer):
     def compute_dft(self, signal: DiscreteSignal):
-        return self.fft(signal.data)
+        return self.compute_fft(signal.data)
     def compute_idft(self, spectrum):
         return self.ifft(spectrum)
     def compute_fft(self, x):
@@ -110,5 +110,5 @@ class FFTAnalyzer(DFTAnalyzer):
         return np.concatenate([even + T[:N // 2] * odd, even + T[N // 2:] * odd])
     def ifft(self, X):
         N = len(X)
-        x_conj = self.fft(np.conj(X))
+        x_conj = self.compute_fft(np.conj(X))
         return np.conj(x_conj) / N

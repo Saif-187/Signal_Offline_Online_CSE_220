@@ -1,9 +1,10 @@
+from email.mime import audio
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import numpy as np
 import scipy.io.wavfile as wav
 import sounddevice as sd
-from discrete_framework import DFTAnalyzer, FFTAnalyzer
+from discrete_framework import DFTAnalyzer, DiscreteSignal, FFTAnalyzer
 
 class AudioEqualizer:
     def __init__(self, root):
@@ -89,42 +90,58 @@ class AudioEqualizer:
         # In the final version, this should play self.processed_audio
         if self.use_fft.get():
             analyzer = FFTAnalyzer()
-            chunk_size = 1024
-            while chunk_size < 1024:  
-                chunk_size <<= 1
+            chunk_size = 1024  
         else:
             analyzer = DFTAnalyzer()
             chunk_size = 256
+        hop_size = chunk_size // 2 
         audio = self.original_audio
         total_samples = len(audio)
-        processed_chunks = []
-        for start in range(0, total_samples, chunk_size):
+        output_audio = np.zeros(total_samples + chunk_size)
+        sum_windows = np.zeros(total_samples + chunk_size)
+        window = np.hanning(chunk_size)
+        for start in range(0, total_samples, hop_size):
             end = min(start + chunk_size, total_samples)
             chunk = audio[start:end]
             if len(chunk) < chunk_size:
-                chunk = np.pad(chunk, (0, chunk_size - len(chunk)), mode='constant')
-            window = np.hanning(len(chunk))
+                chunk = np.pad(chunk, (0, chunk_size - len(chunk)))
             chunk_windowed = chunk * window
             chunk_complex = chunk_windowed.astype(np.complex128)
-            signal = type('Signal', (), {'data': chunk_complex}) 
+            signal = DiscreteSignal(chunk_complex)
             spectrum = analyzer.compute_dft(signal)
             filtered_spectrum = self.apply_equalizer(spectrum, gains, self.samplerate, chunk_size)
             time_domain = analyzer.compute_idft(filtered_spectrum)
             time_domain_real = np.real(time_domain)
-            time_domain_real = time_domain_real * window
-            processed_chunks.append(time_domain_real[:end-start])
-        output_audio = np.concatenate(processed_chunks)[:total_samples]
+            output_audio[start:start+chunk_size] += time_domain_real * window
+            sum_windows[start:start+chunk_size] += window
+        sum_windows[sum_windows < 0.01] = 1.0
+        output_audio = output_audio[:total_samples] / sum_windows[:total_samples]
         max_val = np.max(np.abs(output_audio))
         if max_val > 1.0:
             output_audio = output_audio / max_val
-        
-        self.processed_audio = output_audio
-        
-        print("Processing complete. Playing audio...")
     
+        self.processed_audio = output_audio
+    
+        print("Processing complete. Playing audio...")
         sd.stop()
-        default_output = sd.default.device[0]
-        sd.play(output_audio, self.samplerate, device=default_output)
+        sd.play(output_audio, self.samplerate)
+    def apply_equalizer(self, spectrum, gains, samplerate, chunk_size):
+    
+        N = len(spectrum)
+        freqs = np.fft.fftfreq(N, 1/samplerate)
+        bands = [
+            (0, 200),          
+            (200, 600),         
+            (600, 2400),        
+            (2400, 6000),       
+            (6000, samplerate/2) 
+        ]
+        filtered = spectrum.copy()
+        for i, (low_freq, high_freq) in enumerate(bands):
+            mask = (np.abs(freqs) >= low_freq) & (np.abs(freqs) < high_freq)
+            filtered[mask] *= gains[i]
+    
+        return filtered
 
 if __name__ == "__main__":
     root = tk.Tk()
