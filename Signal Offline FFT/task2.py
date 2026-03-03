@@ -1,4 +1,3 @@
-from email.mime import audio
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import numpy as np
@@ -114,7 +113,7 @@ class AudioEqualizer:
             time_domain_real = np.real(time_domain)
             output_audio[start:start+chunk_size] += time_domain_real * window
             sum_windows[start:start+chunk_size] += window
-        sum_windows[sum_windows < 0.01] = 1.0
+        sum_windows[sum_windows == 0] = 1.0
         output_audio = output_audio[:total_samples] / sum_windows[:total_samples]
         max_val = np.max(np.abs(output_audio))
         if max_val > 1.0:
@@ -128,7 +127,8 @@ class AudioEqualizer:
     def apply_equalizer(self, spectrum, gains, samplerate, chunk_size):
     
         N = len(spectrum)
-        freqs = np.fft.fftfreq(N, 1/samplerate)
+        freqs = np.arange(N) * samplerate / N
+        freqs[freqs > samplerate/2] -= samplerate
         bands = [
             (0, 200),          
             (200, 600),         

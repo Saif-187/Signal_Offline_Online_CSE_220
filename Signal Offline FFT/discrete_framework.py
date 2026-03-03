@@ -106,8 +106,12 @@ class FFTAnalyzer(DFTAnalyzer):
             return x
         even = self.recursive_fft(x[0::2])
         odd = self.recursive_fft(x[1::2])
-        T = np.exp(-2j * np.pi * np.arange(N) / N)
-        return np.concatenate([even + T[:N // 2] * odd, even + T[N // 2:] * odd])
+        factor = np.exp(-2j * np.pi * np.arange(N // 2) / N)
+
+        top = even + factor * odd
+        bottom = even - factor * odd
+
+        return np.concatenate([top, bottom])
     def ifft(self, X):
         N = len(X)
         x_conj = self.compute_fft(np.conj(X))

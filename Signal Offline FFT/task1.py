@@ -135,15 +135,23 @@ class DoodlingApp:
         for k_idx, k in enumerate(indices):
             coeff = self.fourier_coeffs[k]
             magnitude = np.abs(coeff)
-            phase = np.angle(coeff)
             rotation = np.exp(1j * 2 * np.pi * k * t)
             vector = coeff * rotation / N 
-            
-            if k_idx < 20: 
-                self.draw_epicycle(x, y, magnitude/N)
-            
+
+            prev_x, prev_y = x, y  # Store previous center
+
             x += np.real(vector)
             y += np.imag(vector)
+
+            if k_idx < 20:
+                self.draw_epicycle(prev_x, prev_y, magnitude/N)
+                self.canvas.create_line(
+                prev_x, prev_y,
+                x, y,
+                fill="black",
+                width=2,
+                tags="epicycle"
+            )
         
         r = 4
         self.canvas.create_oval(x-r, y-r, x+r, y+r, fill="red", outline="red", tags="tip")
