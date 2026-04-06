@@ -7,6 +7,7 @@ class SmartIrrigation:
         self.b=b
         self.dt=dt
         self.t = np.arange(0, t_max , dt)
+        self.t_max=t_max
 
     def u_step(self):
         return np.ones_like(self.t)
@@ -137,7 +138,7 @@ inputs = {
 }
 
 # Bromwich contour parameters, set these values
-c = 0.5
+c = 0.51
 W = 100
 N = 1000
 omega = np.linspace(-W, W, N)
